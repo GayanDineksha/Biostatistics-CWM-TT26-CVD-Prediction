@@ -11,11 +11,44 @@ FEATURE_COLUMNS = [
     "thalach", "exang", "oldpeak", "slope", "ca", "thal",
 ]
 
-USERS = {
+import json
+import os
+
+USERS_FILE = "users.json"
+
+# ---------------------------------------------------------------
+# Default demo accounts, used only to seed users.json on first run.
+# NOTE: plaintext passwords in a JSON file are NOT secure — this is a
+# simulated demo for an academic prototype only. A real clinical system
+# would use hashed credentials in a proper database, not a flat file.
+# ---------------------------------------------------------------
+DEFAULT_USERS = {
     "admin": {"password": "password123", "role": "admin"},
     "clinician": {"password": "clin123", "role": "clinician"},
     "analyst": {"password": "analyst123", "role": "analyst"},
 }
+
+
+def load_users():
+    """Load the current user store, seeding it with defaults on first run."""
+    if not os.path.exists(USERS_FILE):
+        save_users(DEFAULT_USERS)
+        return DEFAULT_USERS.copy()
+    with open(USERS_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_users(users: dict):
+    """Persist the full user store back to users.json."""
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=2)
+
+
+def add_user(username: str, password: str, role: str):
+    """Add a single new user and persist the updated store."""
+    users = load_users()
+    users[username] = {"password": password, "role": role}
+    save_users(users)
 
 
 @st.cache_resource
@@ -55,73 +88,110 @@ def inject_custom_css():
     """
     Global styling applied on every page. Call once, right after
     st.set_page_config(), at the top of every page file (and app.py).
+    Matches the neon login page: Inter font, pill-shaped controls, one
+    fixed neon-blue accent color used consistently across the whole app.
     """
+    ACCENT = "#00d2ff"
+
     st.markdown(
-        """
+        f"""
         <style>
-        /* Metric cards: subtle border, dark card background, rounded corners */
-        div[data-testid="stMetric"] {
-            background-color: #1A2332;
-            border: 1px solid #2E3A4D;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        html, body, [class*="css"] {{
+            font-family: 'Inter', sans-serif !important;
+        }}
+
+        /* Metric cards: dark card background, neon-accented border, rounded corners */
+        div[data-testid="stMetric"] {{
+            background-color: #12161f;
+            border: 1px solid {ACCENT}55;
             padding: 16px 18px;
             border-radius: 14px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-        }
-        div[data-testid="stMetric"] label {
+            box-shadow: 0 2px 10px rgba(0,210,255,0.08);
+        }}
+        div[data-testid="stMetric"] label {{
             color: #9BA8BC !important;
-        }
+        }}
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {{
+            color: {ACCENT} !important;
+        }}
 
-        /* Primary action buttons (e.g. Predict CVD Risk, Log In) */
-        button[kind="primary"] {
-            background: linear-gradient(90deg, #2E86AB, #1B5E7D);
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            padding: 0.65em 1.3em;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-        button[kind="primary"]:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 14px rgba(46,134,171,0.45);
-        }
+        /* Pill-shaped text inputs, matching the login page */
+        div[data-baseweb="input"], div[data-baseweb="select"] {{
+            border-radius: 50px !important;
+            border: 2px solid {ACCENT}88 !important;
+            background-color: transparent !important;
+        }}
+        div[data-baseweb="input"] > input {{
+            color: white !important;
+            letter-spacing: 0.5px;
+        }}
 
-        /* Secondary/regular buttons */
-        .stButton > button, .stDownloadButton > button {
-            border-radius: 10px;
-        }
+        /* Primary action buttons (Predict CVD Risk, Log In, etc.) */
+        button[kind="primary"] {{
+            border-radius: 50px !important;
+            border: 2px solid {ACCENT} !important;
+            color: {ACCENT} !important;
+            background: transparent !important;
+            font-weight: 800 !important;
+            letter-spacing: 1.5px;
+            transition: all 0.25s ease;
+        }}
+        button[kind="primary"]:hover {{
+            background-color: {ACCENT} !important;
+            color: #0a0e14 !important;
+            box-shadow: 0 0 16px {ACCENT}66;
+        }}
 
-        /* Tabs — rounded top corners, comfortable padding */
-        .stTabs [data-baseweb="tab-list"] {
+        /* Secondary buttons (demo presets, downloads, etc.) */
+        button[kind="secondary"], .stDownloadButton > button {{
+            border-radius: 50px !important;
+            border: 1px solid #444 !important;
+            background: transparent !important;
+            color: #ccc !important;
+            font-weight: 600 !important;
+            transition: 0.25s;
+        }}
+        button[kind="secondary"]:hover, .stDownloadButton > button:hover {{
+            border-color: {ACCENT} !important;
+            color: {ACCENT} !important;
+        }}
+
+        /* Tabs — rounded top corners, neon accent on the active tab */
+        .stTabs [data-baseweb="tab-list"] {{
             gap: 6px;
-        }
-        .stTabs [data-baseweb="tab"] {
+        }}
+        .stTabs [data-baseweb="tab"] {{
             border-radius: 10px 10px 0 0;
             padding: 10px 18px;
-            background-color: #1A2332;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #2E86AB !important;
-        }
+            background-color: #12161f;
+        }}
+        .stTabs [aria-selected="true"] {{
+            background-color: {ACCENT}22 !important;
+            color: {ACCENT} !important;
+            border-bottom: 2px solid {ACCENT} !important;
+        }}
 
         /* Sidebar */
-        section[data-testid="stSidebar"] {
-            background-color: #0B0F17;
-            border-right: 1px solid #2E3A4D;
-        }
+        section[data-testid="stSidebar"] {{
+            background-color: #0a0e14;
+            border-right: 1px solid {ACCENT}33;
+        }}
 
         /* Dataframes / tables: rounded corners */
-        div[data-testid="stDataFrame"] {
+        div[data-testid="stDataFrame"] {{
             border-radius: 10px;
             overflow: hidden;
-        }
+        }}
 
         /* Cards used for the risk banner and similar custom containers */
-        .risk-card {
+        .risk-card {{
             border-radius: 14px;
             padding: 22px;
             text-align: center;
             margin: 14px 0;
-        }
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -129,18 +199,6 @@ def inject_custom_css():
 
 
 def clinical_disclaimer():
-    """Standard footer disclaimer, shown on every page."""
-    st.markdown(
-        """
-        <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #333;">
-            <p style="font-size: 0.8em; font-style: italic; color: gray; text-align: center;">
-            ⚠️ Clinical Disclaimer: This application is a prototype developed exclusively
-            for academic research (Module: CIS 6005 Computational Intelligence).
-            The machine learning models and probabilities presented are not intended
-            for medical diagnosis, treatment, or clinical use. Always consult a certified
-            healthcare professional for medical advice.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    """No-op — disclaimer removed. Kept as a function so existing calls
+    to clinical_disclaimer() across app.py and pages/*.py don't break."""
+    pass
