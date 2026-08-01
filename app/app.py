@@ -1,42 +1,31 @@
 import streamlit as st
 import time
-from utils import inject_custom_css, clinical_disclaimer, load_users
+from utils import inject_custom_css, load_users
 
-#PAGE CONFIGURATION 
-st.set_page_config(page_title="CVD Portal Login", page_icon="🩺", layout="wide")
-inject_custom_css()
+# --- PAGE CONFIGURATION ---
+st.set_page_config(page_title="CVD Clinical Portal", page_icon="🩺", layout="wide")
 
-#SESSION STATE INITIALIZATION
+# --- SESSION STATE INITIALIZATION ---
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "active_role" not in st.session_state:
     st.session_state.active_role = "Clinician"
 
-#DYNAMIC THEME COLORS 
-theme_colors = {
-    "Clinician": "#00d2ff",  # Neon Blue
-    "Analyst": "#00e676",    # Neon Green
-    "Admin": "#ff1744"       # Neon Red
-}
-active_color = theme_colors[st.session_state.active_role]
 
-# Hide sidebar nav until the user actually logs in
-if not st.session_state.authenticated:
-    st.markdown(
-        "<style>[data-testid='stSidebarNav'] {display: none;}</style>",
-        unsafe_allow_html=True,
-    )
+def login_page():
+    inject_custom_css()
 
-# --- TYPOGRAPHY AND CSS OVERHAUL ---
-st.markdown(f"""
-    <style>
+    theme_colors = {
+        "Clinician": "#00d2ff",
+        "Analyst": "#00e676",
+        "Admin": "#ff1744",
+    }
+    active_color = theme_colors[st.session_state.active_role]
+
+    st.markdown(f"""
+        <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-
-        html, body, [class*="css"] {{
-            font-family: 'Inter', sans-serif !important;
-        }}
-
-        [data-testid="collapsedControl"] {{display: none;}}
+        html, body, [class*="css"] {{ font-family: 'Inter', sans-serif !important; }}
 
         div[data-baseweb="input"] {{
             border-radius: 50px !important;
@@ -98,40 +87,19 @@ st.markdown(f"""
             margin-top: 30px;
             margin-bottom: 25px;
         }}
-    </style>
-""", unsafe_allow_html=True)
+        </style>
+    """, unsafe_allow_html=True)
 
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col_left, col_center, col_right = st.columns([1, 1.2, 1])
 
-st.markdown("<br><br>", unsafe_allow_html=True)
-
-col_left, col_center, col_right = st.columns([1, 1.2, 1])
-
-with col_center:
-
-    if st.session_state.authenticated:
-        #LOGGED-IN STATE
-        st.markdown("<div class='login-title'>WELCOME</div>", unsafe_allow_html=True)
-        st.markdown(
-            f"<div class='auth-subtitle'>Logged in as {st.session_state.username} "
-            f"({st.session_state.role})</div>",
-            unsafe_allow_html=True,
-        )
-        st.info("Use the sidebar to navigate the portal.")
-        col_btn_l, col_btn_c, col_btn_r = st.columns([1, 2, 1])
-        with col_btn_c:
-            if st.button("Log out", type="primary", use_container_width=True):
-                st.session_state.authenticated = False
-                st.rerun()
-
-    else:
-        #LOGIN FORM
+    with col_center:
         st.markdown("<div class='login-title'>LOGIN</div>", unsafe_allow_html=True)
         st.markdown(
             "<p style='text-align: center; color: #666; font-size: 14px; margin-bottom: 25px;'>"
             "Select a role theme, then enter your credentials</p>",
             unsafe_allow_html=True,
         )
-
 
         role_col1, role_col2, role_col3 = st.columns(3)
         with role_col1:
@@ -175,4 +143,30 @@ with col_center:
                     else:
                         st.error("Invalid username or password.")
 
-clinical_disclaimer()
+
+# ---------------------------------------------------------------
+# ROUTING
+# ---------------------------------------------------------------
+if not st.session_state.authenticated:
+    # No sidebar at all while logged out — position="hidden" removes the
+    # nav widget entirely rather than just hiding it with CSS.
+    pg = st.navigation([st.Page(login_page, title="Login")], position="hidden")
+    pg.run()
+else:
+    dashboard = st.Page("pages/Dashboard.py", title="Dashboard", icon="🏠", default=True)
+    screening = st.Page("pages/Single_Patient_Screening.py", title="Single Patient Screening", icon="🩺")
+    batch = st.Page("pages/Batch_Processing.py", title="Batch Processing", icon="📁")
+    analytics = st.Page("pages/Model_Analytics.py", title="Model Analytics", icon="📊")
+    audit = st.Page("pages/System_Audit.py", title="System Audit", icon="🛡️")
+    user_mgmt = st.Page("pages/User_Management.py", title="User Management", icon="👥")
+    logout = st.Page("pages/Logout.py", title="Log out", icon="🚪")
+
+    # Sidebar order is exactly the order of this list — role-filtered so
+    # clinicians/analysts never even see admin-only links.
+    pages = [dashboard, screening, batch, analytics]
+    if st.session_state.get("role") == "admin":
+        pages += [audit, user_mgmt]
+    pages.append(logout)
+
+    pg = st.navigation(pages)
+    pg.run()
