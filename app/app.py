@@ -144,9 +144,7 @@ def login_page():
                         st.error("Invalid username or password.")
 
 
-# ---------------------------------------------------------------
-# ROUTING
-# ---------------------------------------------------------------
+
 if not st.session_state.authenticated:
     # No sidebar at all while logged out — position="hidden" removes the
     # nav widget entirely rather than just hiding it with CSS.

@@ -1,8 +1,3 @@
-"""
-Shared utilities for the CVD Clinical Decision Support Portal.
-Used by app.py and every file in pages/.
-"""
-
 import streamlit as st
 import joblib
 
@@ -16,12 +11,6 @@ import os
 
 USERS_FILE = "users.json"
 
-# ---------------------------------------------------------------
-# Default demo accounts, used only to seed users.json on first run.
-# NOTE: plaintext passwords in a JSON file are NOT secure — this is a
-# simulated demo for an academic prototype only. A real clinical system
-# would use hashed credentials in a proper database, not a flat file.
-# ---------------------------------------------------------------
 DEFAULT_USERS = {
     "admin": {"password": "password123", "role": "admin"},
     "clinician": {"password": "clin123", "role": "clinician"},
@@ -54,9 +43,27 @@ def add_user(username: str, password: str, role: str):
 @st.cache_resource
 def load_artifacts():
     """Load the trained Random Forest model and fitted scaler."""
-    model = joblib.load("rf_model.joblib")
-    scaler = joblib.load("scaler.joblib")
-    return model, scaler
+    # 1. Get the absolute path to the directory where utils.py lives
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # 2. Try to load from the current directory first
+    try:
+        model_path = os.path.join(current_dir, "rf_model.joblib")
+        scaler_path = os.path.join(current_dir, "scaler.joblib")
+        
+        model = joblib.load(model_path)
+        scaler = joblib.load(scaler_path)
+        return model, scaler
+        
+    except FileNotFoundError:
+        # 3. Fallback: If the files aren't in this folder, check the parent directory (repo root)
+        parent_dir = os.path.dirname(current_dir)
+        model_path_root = os.path.join(parent_dir, "rf_model.joblib")
+        scaler_path_root = os.path.join(parent_dir, "scaler.joblib")
+        
+        model = joblib.load(model_path_root)
+        scaler = joblib.load(scaler_path_root)
+        return model, scaler
 
 
 def require_login():
